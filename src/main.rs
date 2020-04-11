@@ -13,28 +13,20 @@ fn main() -> io::Result<()> {
 
     let mut blah: Blah;
     let mut n: usize;
+    let mut last_byte: usize = 0;
 
-    if let Ok(file) = File::open("foo.idx.json") {
-        let reader2 = BufReader::new(file);
-        blah = serde_json::from_reader(reader2).unwrap();
-        let mut last_byte: usize = 0;
+    blah = Blah::load_index();
 
-        for (_key, val) in blah.table.iter() {
-            for byte in val {
-                if byte > &last_byte {
-                    last_byte = *byte;
-                }
+    for (_key, val) in blah.table.iter() {
+        for byte in val {
+            if byte > &last_byte {
+                last_byte = *byte;
             }
         }
-        println!("starting off on byte: {:#?}", last_byte);
-        n = last_byte + 1;
-
-        reader.seek(SeekFrom::Start(n as u64))?;
-    } else {
-        blah = Blah::new();
-
-        n = 0;
     }
+    println!("starting off on byte: {:#?}", last_byte);
+    n = last_byte + 1;
+    reader.seek(SeekFrom::Start(n as u64))?;
 
     // [0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}
     let uuid_regex_literal = r#"[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"#;

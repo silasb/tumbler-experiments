@@ -1,3 +1,5 @@
+use std::fs::File;
+use std::io::{BufReader};
 
 use serde::{Serializer, Deserializer};
 use serde::{Serialize, Deserialize};
@@ -16,6 +18,15 @@ impl Blah {
   pub fn new() -> Blah {
     Blah {
       table: HashMap::new(),
+    }
+  }
+
+  pub fn load_index() -> Blah {
+    if let Ok(file) = File::open("foo.idx.json") {
+      let reader2 = BufReader::new(file);
+      serde_json::from_reader(reader2).unwrap()
+    } else {
+      Blah::new()
     }
   }
 }

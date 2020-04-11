@@ -5,19 +5,19 @@ use std::io::SeekFrom;
 
 use regex::bytes::Regex;
 
-use blah::Blah;
+use blah::SimpleIndex;
 
 fn main() -> io::Result<()> {
     let file = File::open("foo.txt")?;
     let mut reader = BufReader::new(file);
 
-    let mut blah: Blah;
+    let mut uuid_index: SimpleIndex;
     let mut n: usize;
     let mut last_byte: usize = 0;
 
-    blah = Blah::load_index();
+    uuid_index = SimpleIndex::load_index();
 
-    for (_key, val) in blah.table.iter() {
+    for (_key, val) in uuid_index.table.iter() {
         for byte in val {
             if byte > &last_byte {
                 last_byte = *byte;
@@ -44,7 +44,7 @@ fn main() -> io::Result<()> {
                 let capture = cap.unwrap();
 
                 // println!("{:#?}", capture.as_bytes().to_owned());
-                let entry = blah.table.entry(capture.as_bytes().to_owned()).or_insert(Vec::new());
+                let entry = uuid_index.table.entry(capture.as_bytes().to_owned()).or_insert(Vec::new());
                 (*entry).push(n + capture.start());
             }
         }
@@ -57,9 +57,9 @@ fn main() -> io::Result<()> {
     //     println!("{:#?} => {:#?}", key, val);
     // }
 
-    println!("{}", serde_json::to_string_pretty(&blah)?);
+    println!("{}", serde_json::to_string_pretty(&uuid_index)?);
 
-    let serialized = serde_json::to_vec(&blah)?;
+    let serialized = serde_json::to_vec(&uuid_index)?;
     let mut file = File::create("foo.idx.json")?;
     file.write_all(&serialized)?;
     // println!("{:#?}", serialized);

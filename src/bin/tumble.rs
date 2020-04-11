@@ -5,16 +5,13 @@ use std::io::{self};
 
 // use std::sync::atomic::{AtomicU128, Ordering};
 
-use std::str;
 use std::collections::HashMap;
 
-
-
-use blah::Blah;
+use blah::SimpleIndex;
 
 // https://stackoverflow.com/questions/28516996/how-to-create-and-write-to-memory-mapped-files
 // https://docs.rs/uuid/0.8.1/src/uuid/adapter/mod.rs.html
-mod SequencialUID {
+mod sequencial_uid {
     use lazy_static::lazy_static; // 1.4.0
     use std::sync::Mutex;
     use std::mem::transmute;
@@ -88,11 +85,11 @@ fn main() -> io::Result<()> {
 
     let buffer = unsafe { MmapOptions::new().map(&file)? };
     let mut mut_buffer = buffer.make_mut()?;
-    let blah = Blah::load_index();
+    let uuid_index = SimpleIndex::load_index();
     let mut uuid_map = HashMap::new();
 
-    for (_uuid, positions) in &blah.table {
-      let new_uid = uuid_map.entry(_uuid).or_insert(SequencialUID::gen_random_uuid_as_string());
+    for (_uuid, positions) in &uuid_index.table {
+      let new_uid = uuid_map.entry(_uuid).or_insert(sequencial_uid::gen_random_uuid_as_string());
 
       for pos in positions {
         let range = *pos..(*pos+36);

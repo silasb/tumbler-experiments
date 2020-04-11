@@ -8,25 +8,25 @@ use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Blah {
+pub struct SimpleIndex {
     #[serde(flatten)]
     #[serde(serialize_with = "serialize_hashmap_with_u8vec_key", deserialize_with = "deserialize_hashmap_with_u8vec_key")]
     pub table: HashMap<Vec<u8>, Vec<usize>>
 }
 
-impl Blah {
-  pub fn new() -> Blah {
-    Blah {
+impl SimpleIndex {
+  pub fn new() -> SimpleIndex {
+    SimpleIndex {
       table: HashMap::new(),
     }
   }
 
-  pub fn load_index() -> Blah {
+  pub fn load_index() -> SimpleIndex {
     if let Ok(file) = File::open("foo.idx.json") {
-      let reader2 = BufReader::new(file);
-      serde_json::from_reader(reader2).unwrap()
+      let reader = BufReader::new(file);
+      serde_json::from_reader(reader).unwrap()
     } else {
-      Blah::new()
+      SimpleIndex::new()
     }
   }
 }

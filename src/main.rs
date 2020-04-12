@@ -7,6 +7,8 @@ use regex::bytes::Regex;
 
 use blah::SimpleIndex;
 
+// use crc32fast::Hasher;
+
 fn main() -> io::Result<()> {
     let file = File::open("foo.txt")?;
     let mut reader = BufReader::new(file);
@@ -16,6 +18,9 @@ fn main() -> io::Result<()> {
     let mut last_byte: usize = 0;
 
     uuid_index = SimpleIndex::load_index();
+
+    // let mut hasher = Hasher::new();
+    // hasher.update(reader)
 
     for (_key, val) in uuid_index.table.iter() {
         for byte in val {
@@ -29,7 +34,7 @@ fn main() -> io::Result<()> {
     reader.seek(SeekFrom::Start(n as u64))?;
 
     // [0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}
-    let uuid_regex_literal = r#"[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"#;
+    let uuid_regex_literal = r#"[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}"#;
     let uuid_regex: Regex = Regex::new(uuid_regex_literal).unwrap();
 
     let lines = reader.byte_lines();

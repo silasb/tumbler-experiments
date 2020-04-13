@@ -7,7 +7,7 @@ use std::io::{self, prelude::*, BufReader};
 // use sqlparser::dialect::MySqlDialect;
 // use sqlparser::parser::Parser;
 
-// use std::collections::HashMap;
+use std::collections::HashMap;
 
 use nom_sql::{parser, Literal};
 
@@ -33,10 +33,10 @@ fn main() -> io::Result<()> {
     config_file.read_to_string(&mut toml_content)?;
     let config: Value = toml::from_str(&toml_content)?;
 
-    let file = File::open("foo.txt")?;
+    let file = File::open("foo2.txt")?;
     let reader = BufReader::new(file);
 
-    let mut out_file = File::create("foo.txt.out")?;
+    let mut out_file = File::create("foo2.txt.tumble")?;
 
     // let mut uuid_index: SimpleIndex;
     // let mut n: usize;
@@ -50,46 +50,64 @@ fn main() -> io::Result<()> {
     // mapper content => 0
     // stmt.data[0][mapper["content"]] = random["content"]
 
+    let mut table_columns = HashMap::new();
 
     let mut s = String::new();
 
-    for line in reader.lines() {
+    for (i, line) in reader.lines().enumerate() {
         let rline = line.unwrap();
 
         if rline.ends_with(";") {
             s.push_str(&rline);
             // println!("{:#?}", s);
-            let ast = parser::parse_query(&s).unwrap();
-            match ast {
-              parser::SqlQuery::CreateTable(stmt) => {
-                // hash.entry(stmt.table.docs.to_owned()).or_insert()
-                let _fields: Vec<String> = stmt.to_owned().fields.into_iter().map(|m| m.column.name).collect();
-                // println!("{:#?}", stmt.fields);
+            match parser::parse_query(&s) {
+              Ok(parser::SqlQuery::CreateTable(stmt)) => {
+                let table_name = stmt.to_owned().table.name;
+                let fields: Vec<String> = stmt.to_owned().fields.into_iter().map(|m| m.column.name).collect();
+                table_columns.entry(table_name).or_insert(fields);
+
                 out_file.write_all(format!("{};\n", stmt.to_string()).as_bytes())?;
               },
-              parser::SqlQuery::Insert(mut stmt) => {
+              Ok(parser::SqlQuery::Insert(mut stmt)) => {
                 let table_name = stmt.to_owned().table.name;
-                let fields: Vec<(usize, String)> = stmt.to_owned().fields.unwrap().into_iter()
-                  .enumerate()
-                  .filter(|(_, m)| m.name == "content")
-                  .map(|(i, m)| (i, m.name))
-                  .collect();
+                let table_config = &config.get(&table_name).expect("missing config");
+                // println!("{:#?}", table_config);
+
+                let fields: Vec<(usize, String)> = match stmt.to_owned().fields {
+                  Some(fields) => {
+                    fields.into_iter()
+                      .enumerate()
+                      .filter(|(_, m)| m.name == "manufacturer")
+                      .map(|(i, m)| (i, m.name))
+                      .collect()
+                  },
+                  None => {
+                    let fields = table_columns.get(&table_name).expect("trying to get fields from table but we have not scanned a table yet");
+                    fields.into_iter()
+                      .enumerate()
+                      .filter(|(_, m)| &m[..] == "manufacturer")
+                      .map(|(i, m)| (i, m.to_owned()))
+                      .collect()
+                  }
+                };
 
                 for (i, field) in fields {
-                  if let Literal::String(string) = &mut stmt.data[0][i] {
+                  if let Literal::String(data) = &mut stmt.data[0][i] {
                     // let field = hash.get(&field).unwrap();
-                    if let Value::String(conversion) = &config[&table_name[..]][field] {
+                    if let Value::String(conversion) = table_config.get(field).expect("missing config mapping") {
                       // println!("from: {:#?} to: {:#?}", string, conversion);
-                      // stmt.data[0][i] = Literal::String(conversion.to_string());
-                      *string = conversion.to_string();
+                      *data = conversion.to_string();
                     }
                   }
                 }
                 // stmt.fields[0][fields[0]]
                 // println!("{:#?}", stmt.to_string());
+                if i % 10_000 == 0 {
+                  println!("{} statements tumbled", i);
+                }
                 out_file.write_all(format!("{};\n", stmt.to_string()).as_bytes())?;
               },
-              _ => { }
+              _ => { println!("skipping: {}", i) }
             }
             // println!("{:#?}", ast);
             s.clear();

@@ -15,3 +15,12 @@ sqlite3
 .quit
 ```
 
+
+```
+sqlite3
+pragma compile_options;
+CREATE TABLE IF NOT EXISTS countries (json_text json);
+INSERT INTO countries VALUES ('{"name": "hello"}');
+create index idx_a on a (json_extract(json_text, '$.name'));
+select json_extract(json_text, '$.hello') from countries;
+```

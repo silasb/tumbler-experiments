@@ -11,6 +11,10 @@ use std::collections::HashMap;
 
 use nom_sql::{parser, Literal};
 
+use fake::{Fake};
+use fake::faker::name::raw::*;
+use fake::locales::*;
+
 // use serde_derive::Deserialize;
 
 // #[derive(Deserialize)]
@@ -33,10 +37,10 @@ fn main() -> io::Result<()> {
     config_file.read_to_string(&mut toml_content)?;
     let config: Value = toml::from_str(&toml_content)?;
 
-    let file = File::open("foo2.txt")?;
+    let file = File::open("test.sql")?;
     let reader = BufReader::new(file);
 
-    let mut out_file = File::create("foo2.txt.tumble")?;
+    let mut out_file = File::create("test.sql.tumble")?;
 
     // let mut uuid_index: SimpleIndex;
     // let mut n: usize;
@@ -50,9 +54,11 @@ fn main() -> io::Result<()> {
     // mapper content => 0
     // stmt.data[0][mapper["content"]] = random["content"]
 
+    let mut manufacturer_map = HashMap::new();
     let mut table_columns = HashMap::new();
 
     let mut s = String::new();
+    let mut table_config = None;
 
     for (i, line) in reader.lines().enumerate() {
         let rline = line.unwrap();
@@ -63,6 +69,9 @@ fn main() -> io::Result<()> {
             match parser::parse_query(&s) {
               Ok(parser::SqlQuery::CreateTable(stmt)) => {
                 let table_name = stmt.to_owned().table.name;
+                // can set table_config here since we know that create statements come first
+                table_config = Some(config.get(&table_name).expect("missing config"));
+
                 let fields: Vec<String> = stmt.to_owned().fields.into_iter().map(|m| m.column.name).collect();
                 table_columns.entry(table_name).or_insert(fields);
 
@@ -70,7 +79,6 @@ fn main() -> io::Result<()> {
               },
               Ok(parser::SqlQuery::Insert(mut stmt)) => {
                 let table_name = stmt.to_owned().table.name;
-                let table_config = &config.get(&table_name).expect("missing config");
                 // println!("{:#?}", table_config);
 
                 let fields: Vec<(usize, String)> = match stmt.to_owned().fields {
@@ -94,9 +102,11 @@ fn main() -> io::Result<()> {
                 for (i, field) in fields {
                   if let Literal::String(data) = &mut stmt.data[0][i] {
                     // let field = hash.get(&field).unwrap();
-                    if let Value::String(conversion) = table_config.get(field).expect("missing config mapping") {
+                    if let Value::String(conversion) = table_config.unwrap().get(field).expect("missing config mapping") {
                       // println!("from: {:#?} to: {:#?}", string, conversion);
-                      *data = conversion.to_string();
+                      // *data = conversion.to_string();
+                      let fake_data = manufacturer_map.entry(data.to_string()).or_insert(Name(EN).fake::<String>());
+                      *data = fake_data.to_string();
                     }
                   }
                 }

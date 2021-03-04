@@ -2,4 +2,5 @@
 manufacturer = "silas"
 
 [docs]
-content = "blah3"
+manufacturer.generator = "faker"
+manufacturer.method = "name"

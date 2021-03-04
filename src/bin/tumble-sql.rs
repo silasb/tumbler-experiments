@@ -80,16 +80,20 @@ fn main() -> io::Result<()> {
     let mut table_config = None;
 
     let mut i = 0;
-    x = reader.split(';' as u8);
+    let x = reader.split(';' as u8);
     // while reader.read_line(&mut rline).unwrap_or(0) > 0 {
-    for let Ok(rline) =  {
-    // for (i, line) in reader.lines().enumerate() {
-        // let rline = line.unwrap();
+    for line in x {
+     //for (i, line) in reader.lines().enumerate() {
+         let rline = line.unwrap();
         // let rline = line;
+        //let s = rline;
 
+
+         //println!("{}", rline);
         // if rline.ends_with("") {
         //     rline.pop(); // remove newline
-          s.push_str(&rline);
+         let line2 = String::from_utf8(rline).unwrap();
+          s.push_str(&line2);
           // println!("{:#?}", s);
           match parser::parse_query(&s) {
             Ok(parser::SqlQuery::CreateTable(stmt)) => {

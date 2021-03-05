@@ -1,6 +1,10 @@
 # Tumble
 
 ```
+RUST_LOG=debug cargo run --bin tumble-sql -- --config tumble.toml --source test.sql --dest test.sql.tumble
+```
+
+```
 sqlite3
 .read foo.txt.out
 ```

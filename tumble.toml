@@ -1,6 +1,6 @@
 [trips]
-driver = "silas"
+manufacturer = "silas"
 
 [docs]
-driver.generator = "faker"
-driver.method = "name"
+manufacturer.generator = "faker"
+manufacturer.method = "name"

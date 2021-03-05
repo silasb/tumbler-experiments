@@ -35,19 +35,42 @@ use rayon::prelude::*;
 // }
 
 use toml::{Value};
+use clap::{Arg,App};
 
 fn main() -> io::Result<()> {
     env_logger::init();
 
-    let mut config_file = File::open("tumble.toml")?;
+        let args = App::new("sql-tumbler")
+            .version("0.1.0")
+            .about("your-app-description")
+            .author("Silas Baronda")
+            .args(&[
+                  Arg::new("config")
+                  .about("Config file")
+                  .short('c')
+                  .long("config")
+                  .takes_value(true),
+                  Arg::new("source")
+                  .about("Source file")
+                  .short('s')
+                  .long("source")
+                  .takes_value(true),
+                  Arg::new("dest")
+                  .about("Destination file")
+                  .short('d')
+                  .long("dest")
+                  .takes_value(true),
+            ]).get_matches();
+
+    let mut config_file = File::open(args.value_of("config").unwrap())?;
     let mut toml_content = String::new();
     config_file.read_to_string(&mut toml_content)?;
     let config: Value = toml::from_str(&toml_content)?;
 
-    let file = File::open("test.sql")?;
+    let file = File::open(args.value_of("source").unwrap())?;
     let mut reader = BufReader::new(file);
 
-    let mut out_file = File::create("test.sql.tumble")?;
+    let mut out_file = File::create(args.value_of("dest").unwrap())?;
 
     println!("{:#?}", config);
 
@@ -83,6 +106,7 @@ fn main() -> io::Result<()> {
 
     let mut s = String::new();
     let mut table_config = None;
+    let mut interesting_fields = None;
 
     let mut i = 0;
     let x = reader.split(';' as u8);
@@ -106,6 +130,16 @@ fn main() -> io::Result<()> {
               // can set table_config here since we know that create statements come first
               table_config = Some(config.get(&table_name).expect("missing config"));
 
+              let blah = table_config.expect("missing config mapping");
+              match blah {
+                  Value::Table(blah2) => {
+                      let keys: Vec<_> = blah2.keys().cloned().collect();
+                      println!("{:?}", keys);
+                      interesting_fields = Some(keys);
+                  }
+                  (_) => {}
+              }
+
               let fields: Vec<String> = stmt.to_owned().fields.into_iter().map(|m| m.column.name).collect();
               table_columns.entry(table_name).or_insert(fields);
 
@@ -115,25 +149,40 @@ fn main() -> io::Result<()> {
             },
             Ok(parser::SqlQuery::Insert(mut stmt)) => {
               let table_name = stmt.to_owned().table.name;
-              // println!("{:#?}", table_config);
+               //println!("{:#?}", table_config);
 
               let fields: Vec<(usize, String)> = match stmt.to_owned().fields {
                 Some(fields) => {
+
+                    println!("{:?}", fields);
+
                   fields.into_iter()
                     .enumerate()
-                    .filter(|(_, m)| m.name == "driver")
+                    .filter(|(_, m)| {
+                        let x = interesting_fields.as_ref().unwrap().iter().any(|i2| i2 == "driver");
+                        println!("{:?}", x);
+                        m.name == "driver"
+                    })
                     .map(|(i, m)| (i, m.name))
                     .collect()
                 },
                 None => {
                   let fields = table_columns.get(&table_name).expect("trying to get fields from table but we have not scanned a table yet");
+
+                  println!("{:?} {:?}", fields, interesting_fields);
+
+
                   fields.into_iter()
                     .enumerate()
-                    .filter(|(_, m)| &m[..] == "driver")
+                    .filter(|(_, m)| {
+                        interesting_fields.as_ref().unwrap().iter().any(|i2| i2 == &m[..].to_string())
+                    })
                     .map(|(i, m)| (i, m.to_owned()))
                     .collect()
                 }
               };
+
+              println!("{:?}", fields);
 
               for (i, field) in fields {
                 if let Literal::String(data) = &mut stmt.data[0][i] {
@@ -168,6 +217,9 @@ fn main() -> io::Result<()> {
                 if i == 200_000 {
                   return Ok(())
                 }
+              }
+              if i == 5 {
+                  return Ok(())
               }
               // out_file.write_all(format!("{};\n", stmt.to_string()).as_bytes())?;
             },
